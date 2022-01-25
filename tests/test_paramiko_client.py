@@ -19,7 +19,7 @@ def test_exec_command(ssh_client, command, expected_result):
     assert result == expected_result
 
 
-@pytest.mark.parametrize('command, expected_result', [('echo hello', 'hello')])
+@pytest.mark.parametrize('command, expected_result', [('echo hello\n', 'hello')])
 def test_shell(ssh_client, command, expected_result):
     # type: (SSHClient, str, str) -> None
     result = run_command_with_shell(ssh_client, command)
