@@ -42,20 +42,22 @@ def run_command_with_shell(client, command):
         time.sleep(0.5)
     _ = session.recv(65000)  # Remove beginning buffer
     session.send(command.encode())
-    output = session.recv(65000).strip()
-    return output.decode()
+    while not session.recv_ready():
+        time.sleep(0.5)
+    output = session.recv(65000)
+    return output.decode().strip("\n")
 
 
 def run_wrapped_command_in_shell(command):
     # type: (text_type) -> text_type
     msg = "befrwio"
-    cmd_re_str = "{msg}\n(?P<command_res>.*)\n{msg}".format(msg=msg)
+    cmd_re_str = "befrwio(?P<command_res>(.*\n)*)befrwio"
     command_res_regex = re.compile(cmd_re_str)
-    wrapped_command = "echo {msg}; {command}; echo {msg}\n".format(
+    wrapped_command = "echo {msg};{command};echo {msg}\n".format(
         msg=msg, command=command
     )
     result = run_command_with_shell(get_ssh_client(), wrapped_command)
     real_res = command_res_regex.match(result)
     if real_res:
-        return real_res.groupdict()["command_res"]
+        return real_res.groupdict()["command_res"].strip()
     raise Exception()
