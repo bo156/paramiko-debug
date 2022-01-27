@@ -1,6 +1,7 @@
+import re
 import time
 
-from six import text_type, binary_type
+from six import text_type
 import paramiko
 from paramiko.client import SSHClient
 from .config import (
@@ -31,7 +32,7 @@ def run_command_with_exec_command(client, command):
 
 
 def run_command_with_shell(client, command):
-    # type: (SSHClient, binary_type) -> text_type
+    # type: (SSHClient, text_type) -> text_type
     transport = client.get_transport()
     if transport is None:
         raise Exception("Invalid transport - None")
@@ -40,6 +41,21 @@ def run_command_with_shell(client, command):
     while not session.recv_ready():
         time.sleep(0.5)
     _ = session.recv(65000)  # Remove beginning buffer
-    session.send(command)
+    session.send(command.encode())
     output = session.recv(65000).strip()
     return output.decode()
+
+
+def run_wrapped_command_in_shell(command):
+    # type: (text_type) -> text_type
+    msg = "befrwio"
+    cmd_re_str = "{msg}\n(?P<command_res>.*)\n{msg}".format(msg=msg)
+    command_res_regex = re.compile(cmd_re_str)
+    wrapped_command = "echo {msg}; {command}; echo {msg}\n".format(
+        msg=msg, command=command
+    )
+    result = run_command_with_shell(get_ssh_client(), wrapped_command)
+    real_res = command_res_regex.match(result)
+    if real_res:
+        return real_res.groupdict()["command_res"]
+    raise Exception()
